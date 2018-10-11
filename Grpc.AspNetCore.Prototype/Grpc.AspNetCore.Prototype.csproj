@@ -9,7 +9,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.All" Version="2.2.0-preview2-35157" />
+    <PackageReference Include="Microsoft.AspNetCore.All" Version="2.2.0-preview3-35458" />
 
     <PackageReference Include="Google.Protobuf" Version="3.6.1" />
     <!-- Grpc dependency only to make Grpc API accessible, no RPC handling is done by gRPC stack -->
