@@ -33,6 +33,9 @@ namespace Grpc.AspNetCore.Prototype
 
         public async Task HandleCall(HttpContext httpContext)
         {
+            httpContext.Response.ContentType = "application/grpc";
+            httpContext.Response.Headers.Append("grpc-encoding", "identity");
+
             var requestPayload = await StreamUtils.ReadMessageAsync(httpContext.Request.Body);
             // TODO: make sure the payload is not null
             var request =  method.RequestMarshaller.Deserializer(requestPayload);
@@ -45,7 +48,9 @@ namespace Grpc.AspNetCore.Prototype
             // TODO: make sure the response is not null
             var responsePayload = method.ResponseMarshaller.Serializer(response);
 
-            await StreamUtils.WriteMessageAsync(httpContext.Response.Body, responsePayload, 0, requestPayload.Length);
+            await StreamUtils.WriteMessageAsync(httpContext.Response.Body, responsePayload, 0, responsePayload.Length);
+
+            httpContext.Response.AppendTrailer("grpc-status", ((int) StatusCode.OK).ToString());
         }
 
     }
