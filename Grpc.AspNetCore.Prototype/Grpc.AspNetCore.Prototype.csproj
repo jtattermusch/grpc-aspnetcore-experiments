@@ -10,6 +10,10 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.All" Version="2.2.0-preview2-35157" />
+
+    <PackageReference Include="Google.Protobuf" Version="3.6.1" />
+    <!-- Grpc dependency only to make Grpc API accessible, no RPC handling is done by gRPC stack -->
+    <PackageReference Include="Grpc.Core" Version="1.15.0" />
   </ItemGroup>
 
 </Project>
