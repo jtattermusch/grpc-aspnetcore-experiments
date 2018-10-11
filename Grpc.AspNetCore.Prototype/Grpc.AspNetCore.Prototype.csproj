@@ -14,6 +14,8 @@
     <PackageReference Include="Google.Protobuf" Version="3.6.1" />
     <!-- Grpc dependency only to make Grpc API accessible, no RPC handling is done by gRPC stack -->
     <PackageReference Include="Grpc.Core" Version="1.15.0" />
+    <!-- need TestServerCallContext to be able to create ServerCallContext instances -->
+    <PackageReference Include="Grpc.Core.Testing" Version="1.15.0" />
   </ItemGroup>
 
 </Project>
