@@ -17,12 +17,16 @@ namespace Grpc.AspNetCore.Prototype
         const int MessageDelimiterSize = 4;  // how many bytes it takes to encode "Message-Length"
 
         // reads a grpc message
+        // returns null if there are no more messages.
         public static async Task<byte[]> ReadMessageAsync(Stream stream)
         {
             // read Compressed-Flag and Message-Length
             // as described in https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md
             var delimiterBuffer = new byte[1 + MessageDelimiterSize];
-            await ReadExactlyBytes(stream, delimiterBuffer, 0, delimiterBuffer.Length);
+            if (!await ReadExactlyBytesOrNothing(stream, delimiterBuffer, 0, delimiterBuffer.Length))
+            {
+                return null;
+            }
 
             var compressionFlag = delimiterBuffer[0];
             var messageLength = DecodeMessageLength(delimiterBuffer, 1);
@@ -34,22 +38,35 @@ namespace Grpc.AspNetCore.Prototype
             }
 
             var msgBuffer = new byte[messageLength];
-            await ReadExactlyBytes(stream, msgBuffer, 0, msgBuffer.Length);
+            if (!await ReadExactlyBytesOrNothing(stream, msgBuffer, 0, msgBuffer.Length))
+            {
+                throw new IOException("Unexpected end of stream.");
+            }
             return msgBuffer;
         }
 
-        private static async Task ReadExactlyBytes(Stream stream, byte[] buffer, int offset, int count)
+        // reads exactly the number of requested bytes (returns true if successfully read).
+        // returns false if we reach end of stream before successfully reading anything.
+        // throws if stream ends in the middle of reading.
+        private static async Task<bool> ReadExactlyBytesOrNothing(Stream stream, byte[] buffer, int offset, int count)
         {
+            bool noBytesRead = true;
             while (count > 0)
             {
                 int bytesRead = await stream.ReadAsync(buffer, offset, count);
                 if (bytesRead == 0)
                 {
+                    if (noBytesRead)
+                    {
+                        return false;
+                    }
                     throw new IOException("Unexpected end of stream.");
                 }
+                noBytesRead = false;
                 offset += bytesRead;
                 count -= bytesRead;
             }
+            return true;
         }
 
         private static int DecodeMessageLength(byte[] buffer, int offset)

@@ -16,18 +16,23 @@ namespace Grpc.AspNetCore.Prototype
             var request = context.Request;
             DumpRequestDetails(request);
             
-            // TODO(jtattermusch): check that content is application/grpc
+            // TODO(jtattermusch): check that content type is application/grpc
 
-            var bytes = await StreamUtils.ReadMessageAsync(context.Request.Body);
-            Console.WriteLine("Read message of size " + bytes.Length);
-
-            if (context.Request.Body.ReadByte() == -1)
+            while(true)
             {
-                Console.WriteLine("Reached end of stream.");
-            } 
+                var msg = await StreamUtils.ReadMessageAsync(context.Request.Body);
 
-
-
+                if (msg != null)
+                {
+                    Console.WriteLine("Read message of size " + msg.Length);
+                }
+                else
+                {
+                    Console.WriteLine("No more request messages.");
+                    break;
+                }
+            }
+            
         }
 
         static void DumpRequestDetails(HttpRequest request)
