@@ -29,7 +29,7 @@ namespace Grpc.AspNetCore.Prototype
             }
 
             var compressionFlag = delimiterBuffer[0];
-            var messageLength = DecodeMessageLength(delimiterBuffer, 1);
+            var messageLength = DecodeMessageLength(new ReadOnlySpan<byte>(delimiterBuffer, 1, MessageDelimiterSize));
 
             if (compressionFlag != 0)
             {
@@ -48,16 +48,8 @@ namespace Grpc.AspNetCore.Prototype
         public static async Task WriteMessageAsync(Stream stream, byte[] buffer, int offset, int count)
         {
             var delimiterBuffer = new byte[1 + MessageDelimiterSize];
-
             delimiterBuffer[0] = 0; // = non-compressed
-            
-            ulong messageLength = (ulong) count;
-            for (int i = MessageDelimiterSize; i >=1; i--)
-            {
-                // msg length stored in big endian
-                delimiterBuffer[i] = (byte) (messageLength & 0xff); 
-                messageLength >>= 8; 
-            }
+            EncodeMessageLength(count, new Span<byte>(delimiterBuffer, 1, MessageDelimiterSize));
             await stream.WriteAsync(delimiterBuffer, 0, delimiterBuffer.Length);
 
             await stream.WriteAsync(buffer, offset, count);
@@ -87,18 +79,34 @@ namespace Grpc.AspNetCore.Prototype
             return true;
         }
 
-        private static int DecodeMessageLength(byte[] buffer, int offset)
+        private static void EncodeMessageLength(int messageLength, Span<byte> dest)
         {
-            if (buffer.Length < offset + MessageDelimiterSize)
+            if (dest.Length < MessageDelimiterSize)
+            {
+                throw new ArgumentException("Buffer too small to decode message length.");
+            }
+
+            ulong unsignedValue = (ulong) messageLength;
+            for (int i = MessageDelimiterSize - 1; i >= 0; i--)
+            {
+                // msg length stored in big endian
+                dest[i] = (byte) (unsignedValue & 0xff); 
+                unsignedValue >>= 8; 
+            }
+        }
+
+        private static int DecodeMessageLength(ReadOnlySpan<byte> buffer)
+        {
+            if (buffer.Length < MessageDelimiterSize)
             {
                 throw new ArgumentException("Buffer too small to decode message length.");
             }
 
             ulong result = 0;
-            for (int i = offset; i < offset + MessageDelimiterSize; i++)
+            for (int i = 0; i < MessageDelimiterSize; i++)
             {
                 // msg length stored in big endian
-                result = result << 8 + buffer[i];
+                result = (result << 8) + buffer[i];
             }
 
             if (result > int.MaxValue)
