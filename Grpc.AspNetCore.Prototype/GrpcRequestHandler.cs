@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Grpc.Testing;
 
 namespace Grpc.AspNetCore.Prototype
 {
@@ -18,20 +19,43 @@ namespace Grpc.AspNetCore.Prototype
             
             // TODO(jtattermusch): check that content type is application/grpc
 
-            while(true)
-            {
-                var msg = await StreamUtils.ReadMessageAsync(context.Request.Body);
+            // TODO: bind the service as part of initialization
+            var serverServiceDefinition = TestServiceAspNetCoreBinder.BindService(new TestServiceImpl());
 
-                if (msg != null)
-                {
-                    Console.WriteLine("Read message of size " + msg.Length);
-                }
-                else
-                {
-                    Console.WriteLine("No more request messages.");
-                    break;
-                }
+            var method = context.Request.Path;
+
+            // From registered call handlers, choose the right one based on :path header
+            // and invoke it.
+            IServerCallHandler callHandler;
+            if (serverServiceDefinition.CallHandlers.TryGetValue(method, out callHandler))
+            {
+                await callHandler.HandleCall(context);
             }
+            else
+            {
+                // TODO(jtattermusch): grpc server invokes unimplemented method call handler here...
+                Console.WriteLine("no handler available");
+            }
+
+
+            // while(true)
+            // {
+            //     var msg = await StreamUtils.ReadMessageAsync(context.Request.Body);
+
+            //     if (msg != null)
+            //     {
+            //         Console.WriteLine("Read message of size " + msg.Length);
+
+            //         //var parsedMsg = Grpc.Testing.SimpleRequest.Parser.ParseFrom(msg);
+            //         //Console.WriteLine("Parsed message: " + parsedMsg);
+            //         //Console.WriteLine("Parsed message: " + parsedMsg.Payload.Body.Length);
+            //     }
+            //     else
+            //     {
+            //         Console.WriteLine("No more request messages.");
+            //         break;
+            //     }
+            // }
             
         }
 
