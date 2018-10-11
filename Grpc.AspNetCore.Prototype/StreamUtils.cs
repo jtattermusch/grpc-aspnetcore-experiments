@@ -45,6 +45,24 @@ namespace Grpc.AspNetCore.Prototype
             return msgBuffer;
         }
 
+        public static async Task WriteMessageAsync(Stream stream, byte[] buffer, int offset, int count)
+        {
+            var delimiterBuffer = new byte[1 + MessageDelimiterSize];
+
+            delimiterBuffer[0] = 0; // = non-compressed
+            
+            ulong messageLength = (ulong) count;
+            for (int i = MessageDelimiterSize; i >=1; i--)
+            {
+                // msg length stored in big endian
+                delimiterBuffer[i] = (byte) (messageLength & 0xff); 
+                messageLength >>= 8; 
+            }
+            await stream.WriteAsync(delimiterBuffer, 0, delimiterBuffer.Length);
+
+            await stream.WriteAsync(buffer, offset, count);
+        }
+
         // reads exactly the number of requested bytes (returns true if successfully read).
         // returns false if we reach end of stream before successfully reading anything.
         // throws if stream ends in the middle of reading.
@@ -80,7 +98,7 @@ namespace Grpc.AspNetCore.Prototype
             for (int i = offset; i < offset + MessageDelimiterSize; i++)
             {
                 // msg length stored in big endian
-                result = result * 0x100 + buffer[i];
+                result = result << 8 + buffer[i];
             }
 
             if (result > int.MaxValue)
